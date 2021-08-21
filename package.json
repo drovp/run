@@ -1,0 +1,35 @@
+{
+  "name": "@drovp/run",
+  "version": "0.0.0",
+  "description": "Execute one or multiple console commands on dropped items.",
+  "homepage": "https://github.com/drovp/run",
+  "bugs": "https://github.com/drovp/run/issues",
+  "repository": "github:drovp/run",
+  "main": "dist/index.js",
+  "keywords": [
+    "drovpplugin"
+  ],
+  "author": "tomasklaen",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "clean": "rimraf dist",
+    "start": "npm-run-all clean watch",
+    "preversion": "npm-run-all clean build",
+    "postversion": "git push && git push --tags"
+  },
+  "devDependencies": {
+    "@drovp/types": "^0.0.8",
+    "npm-run-all": "^4.1.5",
+    "rimraf": "^3.0.2",
+    "tslib": "^2.3.1",
+    "typescript": "^4.3.5"
+  }
+}
