@@ -204,7 +204,7 @@ export type Payload = PayloadData<Options, typeof acceptsFlags>;
 export default (plugin: Plugin) => {
 	plugin.registerProcessor<Payload>('run', {
 		main: 'dist/processor.js',
-		description: 'Description.',
+		description: 'Executes one or multiple console commands on dropped items.',
 		accepts: acceptsFlags,
 		threadType: ({options: {threadType, customThreadType}}) =>
 			threadType === 'custom' ? customThreadType : threadType,
