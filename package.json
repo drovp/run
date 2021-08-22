@@ -23,7 +23,7 @@
     "clean": "rimraf dist",
     "start": "npm-run-all clean watch",
     "preversion": "npm-run-all clean build",
-    "postversion": "git push && git push --tags"
+    "postversion": "git push"
   },
   "devDependencies": {
     "@drovp/types": "^0.0.8",
