@@ -23,13 +23,15 @@
     "clean": "rimraf dist",
     "start": "npm-run-all clean watch",
     "preversion": "npm-run-all clean build",
-    "postversion": "git push"
+    "push": "git push",
+    "publish": "npm publish",
+    "postversion": "npm-run-all push publish"
   },
   "devDependencies": {
-    "@drovp/types": "^0.0.8",
+    "@drovp/types": "^0.0.9",
     "npm-run-all": "^4.1.5",
     "rimraf": "^3.0.2",
     "tslib": "^2.3.1",
-    "typescript": "^4.3.5"
+    "typescript": "^4.4.2"
   }
 }

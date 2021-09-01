@@ -1,9 +1,7 @@
 {
 	"compilerOptions": {
-		"module": "CommonJS",
+		"module": "commonjs",
 		"moduleResolution": "node",
-		"esModuleInterop": true,
-		"resolveJsonModule": true,
 		"removeComments": true,
 		"baseUrl": "src",
 		"paths": {"*": ["*"]},
