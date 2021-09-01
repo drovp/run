@@ -8,6 +8,10 @@ import {promises as FSP} from 'fs';
 
 const exec = promisify(CP.exec);
 
+function eem(error: any, preferStack = false) {
+	return error instanceof Error ? preferStack ? error.stack || error.message : error.message : `${error}`;
+}
+
 export default async function ({id, item, options}: Payload, {stage, result}: ProcessorUtils) {
 	const staticValues: Record<string, string> = {};
 	const stdouts: string[] = [];
@@ -122,7 +126,7 @@ export default async function ({id, item, options}: Payload, {stage, result}: Pr
 		try {
 			filledCommand = parseTemplate(command).map<string>(createTokenReplacer('command', i)).join('').trim();
 		} catch (error) {
-			throw new Error(`command[${i}] template error: ${error.message}`);
+			throw new Error(`command[${i}] template error: ${eem(error)}`);
 		}
 
 		if (!filledCommand) throw new Error(`command[${i}]: template produced an empty command`);
@@ -185,7 +189,7 @@ export default async function ({id, item, options}: Payload, {stage, result}: Pr
 		try {
 			filledTemplate = parseTemplate(template).map(createTokenReplacer('result', i)).join('').trim();
 		} catch (error) {
-			throw new Error(`result[${i}] template error: ${error.message}`);
+			throw new Error(`result[${i}] template error: ${eem(error)}`);
 		}
 
 		if (filledTemplate) {
