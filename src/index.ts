@@ -1,4 +1,4 @@
-import {Plugin, PayloadData, makeOptionsSchema, makeAcceptsFlags} from '@drovp/types';
+import {Plugin, PayloadData, OptionsSchema, makeAcceptsFlags} from '@drovp/types';
 
 type Options = {
 	inputTypes: 'file' | 'directory' | 'url' | 'string';
@@ -16,6 +16,7 @@ type Options = {
 		type: 'file' | 'directory' | 'url' | 'string';
 		template: string;
 	}[];
+	resultMode: 'all' | 'any' | 'first';
 };
 
 const templateDescription = {
@@ -25,7 +26,7 @@ const templateDescription = {
 	string: 'Should produce any string.',
 };
 
-const optionsSchema = makeOptionsSchema<Options>()([
+const optionsSchema: OptionsSchema<Options> = [
 	{
 		name: 'inputTypes',
 		type: 'select',
@@ -119,22 +120,23 @@ const optionsSchema = makeOptionsSchema<Options>()([
 		description: `
 				<h4>Available tokens:</h4>
 				<p>
-					<code>{path}</code>, <code>{url}</code>, <code>{string}</code> - file/dir path, url, or string contents, depending on input type<br>
-					<code>{payload}</code> - if you've enabled more than one type input, this is either path, url, or string<br>
-					<code>{basename}</code> - path basename (<code>/foo/bar.jpg</code> → <code>bar.jpg</code>)<br>
-					<code>{filename}</code> - file name without the extension<br>
-					<code>{extname}</code> - file extension WITH the dot<br>
-					<code>{ext}</code> - file extension without the dot<br>
-					<code>{dirname}</code> - directory path (<code>/foo/bar/baz.jpg</code> → <code>/foo/bar</code>)<br>
-					<code>{dirbasename}</code> - name of a parent directory (<code>/foo/bar/baz.jpg</code> → <code>bar</code>)<br>
-					<code>{stdout}</code>, <code>{stdout:N}</code> - stdout of the last or Nth command, starting at 0 (<code>{stdout:0}</code>)<br>
-					<code>{stdout:RegExp}</code>, <code>{stdout:N:RegExp}</code> - <a href="https://regex101.com/">ECMAScript (JS) RegExp</a> match of the stdout of the last or Nth command.<br>
+					<code>&lt;path&gt;</code>, <code>&lt;url&gt;</code>, <code>&lt;string&gt;</code> - file/dir path, url, or string contents, depending on input type<br>
+					<code>&lt;payload&gt;</code> - if you've enabled more than one type input, this is either path, url, or string<br>
+					<code>&lt;basename&gt;</code> - path basename (<code>/foo/bar.jpg</code> → <code>bar.jpg</code>)<br>
+					<code>&lt;filename&gt;</code> - file name without the extension<br>
+					<code>&lt;extname&gt;</code> - file extension WITH the dot<br>
+					<code>&lt;ext&gt;</code> - file extension without the dot<br>
+					<code>&lt;dirname&gt;</code> - directory path (<code>/foo/bar/baz.jpg</code> → <code>/foo/bar</code>)<br>
+					<code>&lt;dirbasename&gt;</code> - name of a parent directory (<code>/foo/bar/baz.jpg</code> → <code>bar</code>)<br>
+					<code>&lt;stdout&gt;</code>, <code>&lt;stdout[N]&gt;</code> - stdout of the last or Nth command, starting at 0 (<code>&lt;stdout[0]&gt;</code>)<br>
+					<code>&lt;stdout:RegExp&gt;</code>, <code>&lt;stdout[N]:RegExp&gt;</code> - <a href="https://regex101.com/">ECMAScript (JS) RegExp</a> match of the stdout of the last or Nth command.<br>
 				</p>
 				<ul>
-					<li>RegExp is created with <code>is</code> flags.</li>
-					<li>Use <code>(?&lt;result&gt;...)</code> named capture group to specify only the portion of the RegExp to extract, otherwise the whole match is going to be used.</li>
-					<li><code>{}</code> characters have to be escaped with <code>\\{\\}</code></li>
-					<li>Example: if you're trying to match url in a string like <code>'url: https://example.com'</code> you'd write <code>{stdout:url: *(?&lt;result&gt;https?:\/\/[^ ]+)}</code></li>
+					<li><code>&lt;&gt;:\\</code> characters have to be escaped with <code>\\&lt;\\&gt;\\:\\\\</code></li>
+					<li>Use <code>(?\\&lt;result\\&gt;...)</code> named capture group to specify only the portion of the RegExp to extract, otherwise the whole match is going to be used.</li>
+					<li>Example: if you're trying to match url in a string like <code>'url: https://example.com'</code> you'd use <code>&lt;stdout:url\\: *(?\\&lt;result\\&gt;https?:\/\/[^ ]+)&gt;</code></li>
+					<li>Un-configured RegExp is created with <code>is</code> flags (case insensitive + dot matches new line).</li>
+					<li>You can configure a RegExp by wrapping it in slashes: <code>&lt;stdout:/expression/im&gt;</code>.</li>
 				</ul>`,
 	},
 	{
@@ -178,7 +180,7 @@ const optionsSchema = makeOptionsSchema<Options>()([
 				: `Emit only the first template that produced something.`,
 		isHidden: (_, options) => options.resultTemplates.length === 0,
 	},
-]);
+];
 
 function satisfiesFilters(value: string, options: Options) {
 	for (const filter of options.includes) {
@@ -196,7 +198,8 @@ const acceptsFlags = makeAcceptsFlags<Options>()({
 	files: (item, options) => options.inputTypes.includes('file') && satisfiesFilters(item.path, options),
 	directories: (item, options) => options.inputTypes.includes('directory') && satisfiesFilters(item.path, options),
 	urls: (item, options) => options.inputTypes.includes('url') && satisfiesFilters(item.url, options),
-	strings: (item, options) => options.inputTypes.includes('string') && satisfiesFilters(item.contents, options),
+	strings: (item, options) =>
+		item.type === 'text/plain' && options.inputTypes.includes('string') && satisfiesFilters(item.contents, options),
 });
 
 export type Payload = PayloadData<Options, typeof acceptsFlags>;

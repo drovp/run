@@ -1,51 +1,24 @@
 import type {ProcessorUtils} from '@drovp/types';
 import type {Payload} from './';
-import OS from 'os';
-import Path from 'path';
-import CP from 'child_process';
+import * as OS from 'os';
+import * as Path from 'path';
+import * as CP from 'child_process';
 import {promisify} from 'util';
 import {promises as FSP} from 'fs';
 
 const exec = promisify(CP.exec);
 
-const STATIC_TOKENS = [
-	'path',
-	'url',
-	'string',
-	'payload',
-	'extname',
-	'ext',
-	'basename',
-	'filename',
-	'dirname',
-	'dirbasename',
-];
-
-interface Command {
-	command: string;
-	filledCommand: string;
-	cwd: string;
-	ignoreErrors: boolean;
-}
-
-interface ResultTemplate {
-	type: 'file' | 'directory' | 'url' | 'string';
-	template: string;
-	filledTemplate: string;
-}
-
-export default async ({id, item, options}: Payload, {stage, result}: ProcessorUtils) => {
-	const tokenValues: Record<string, string> = {};
-	const commands: Command[] = [];
+export default async function ({id, item, options}: Payload, {stage, result}: ProcessorUtils) {
+	const staticValues: Record<string, string> = {};
 	const stdouts: string[] = [];
-	const resultTemplates: ResultTemplate[] = [];
+	const {commands, resultTemplates, resultMode} = options;
 
 	switch (item.kind) {
 		case 'directory':
 		case 'file': {
 			const extname = Path.extname(item.path);
 			const dirname = Path.dirname(item.path);
-			Object.assign(tokenValues, {
+			Object.assign(staticValues, {
 				path: item.path,
 				payload: item.path,
 				extname,
@@ -58,74 +31,21 @@ export default async ({id, item, options}: Payload, {stage, result}: ProcessorUt
 			break;
 		}
 		case 'string':
-			Object.assign(tokenValues, {
+			Object.assign(staticValues, {
 				string: item.contents,
 				payload: item.contents,
 			});
 			break;
 		case 'url':
-			Object.assign(tokenValues, {
+			Object.assign(staticValues, {
 				url: item.url,
 				payload: item.url,
 			});
 			break;
 	}
 
-	function replaceStaticToken(tokenName: string, target: string) {
-		const tokenValue = tokenValues[tokenName];
-		return target.replaceAll(`{${tokenName}}`, tokenValue || '');
-	}
-
-	// Normalize/validate commands, and replace static tokens
-	for (let i = 0; i < options.commands.length; i++) {
-		let {command, cwd, ignoreErrors} = options.commands[i]!;
-		command = command ? `${command}`.trim() : command;
-
-		if (!command) throw new Error(`Command ${i} is empty.`);
-
-		// Remove white space formatting
-		let filledCommand = command.replaceAll(/\s*\n\s*/g, ' ').trim();
-
-		for (const tokenName of STATIC_TOKENS) {
-			const token = `{${tokenName}}`;
-
-			if (tokenValues[tokenName] == null && filledCommand.includes(token)) {
-				result.error(
-					`Invalid command.\n\nEnabled input type "${item.kind}" doesn't have a ${tokenName}, yet ${token} token is used in command[${i}].`
-				);
-				return;
-			}
-
-			filledCommand = replaceStaticToken(tokenName, filledCommand);
-			cwd = replaceStaticToken(tokenName, cwd);
-		}
-
-		commands.push({command, filledCommand, cwd, ignoreErrors});
-	}
-
-	// Normalize/validate resultTemplates, and replace static tokens
-	for (let i = 0; i < options.resultTemplates.length; i++) {
-		let {type, template} = options.resultTemplates[i]!;
-		let filledTemplate = template;
-
-		for (const tokenName of STATIC_TOKENS) {
-			const token = `{${tokenName}}`;
-
-			if (tokenValues[tokenName] == null && filledTemplate.includes(token)) {
-				result.error(
-					`Invalid result template.\n\nEnabled input type "${item.kind}" doesn't have a ${tokenName}, yet ${token} token is used in result[${i}].`
-				);
-				return;
-			}
-
-			filledTemplate = replaceStaticToken(tokenName, filledTemplate);
-		}
-
-		resultTemplates.push({type, template, filledTemplate});
-	}
-
 	// Create temporary directory
-	const tmpDir = Path.join(OS.tmpdir(), `osum-run-operation-${id}`);
+	const tmpDir = Path.join(OS.tmpdir(), `drovp-run-operation-${id}`);
 	console.log(`creating temporary working directory`);
 	console.log(`path: "${tmpDir}"`);
 	await FSP.mkdir(tmpDir, {recursive: true});
@@ -137,58 +57,80 @@ export default async ({id, item, options}: Payload, {stage, result}: ProcessorUt
 	// Execute commands
 	const parallelPromises = [];
 
-	for (let i = 0; i < commands.length; i++) {
-		let {command, filledCommand, cwd, ignoreErrors} = commands[i]!;
+	// Create token replacer for a namespace
+	const createTokenReplacer = (namespace: string, i: number) => (token: Token) => {
+		const position = `${token.line}:${token.column}`;
 
-		if (!options.parallelMode) stage(`${i + 1}/${commands.length}`);
+		if (token.type === 'string') return token.value;
 
-		if (filledCommand.includes(`{stdout}`) && i == 0) {
-			result.error(`{stdout} token used in 1st command, where there can't be any stdout yet.`);
-			return;
-		}
+		// Stdout
+		if (token.name === 'stdout') {
+			const tokenStr = token.args.length > 0 ? `<stdout:${token.args.join(':')}>` : `<stdout>`;
+			let stdoutIndex: number = (token.prop ?? stdouts.length - 1) as number;
+			let regExpStr: string | undefined = token.args[0];
 
-		if (options.parallelMode) {
-			// {stdout[:N][:RegExp]}
-			const regExp = /(?<!\\)\{stdout(:(?<tokenIndex>\d+))?(:(?<tokenRegExp>.+?))?(?<!\\)\}/g;
-			let match;
-			const matchTarget = filledCommand;
-			while ((match = regExp.exec(matchTarget))) {
-				const token = match[0]!;
-				const {tokenIndex, tokenRegExp} = match.groups!;
-				const stdout =
-					tokenIndex != null ? stdouts[tokenIndex as unknown as number] : stdouts[stdouts.length - 1];
-
-				if (stdout == null) {
-					result.error(
-						`Token "${token}" used in command[${i}], but stdout for command[${tokenIndex}] is not available.`
-					);
-					return;
-				}
-
-				if (tokenRegExp) {
-					const match = new RegExp(tokenRegExp.replaceAll('\\{', '{').replaceAll('\\}', '}'), 'is').exec(
-						stdout
-					);
-					if (match) {
-						const result = match.groups?.result ?? match[0]!;
-						filledCommand = filledCommand.replace(token, result);
-					} else {
-						result.error(
-							`command[${i}] token "${token}" didn't match anything in command[${tokenIndex}] stdout.`
-						);
-						return;
-					}
-				} else {
-					filledCommand = filledCommand.replace(token, stdout);
-				}
+			if (token.args.length > 1) {
+				throw new Error(
+					`${namespace}[${i}]: token at ${position} has too many arguments:\n\n${tokenStr}\n\nMaybe unescaped colon?`
+				);
 			}
 
-			// Remove escapes
-			filledCommand = filledCommand.replaceAll('\\{', '{').replaceAll('\\}', '}');
+			const stdout = stdouts[stdoutIndex!];
+
+			if (!stdout)
+				throw new Error(
+					`${namespace}[${i}]: token at ${position}:\n\n${tokenStr}\n\nreferences non-existent stdout index "${stdoutIndex}".`
+				);
+
+			if (regExpStr) {
+				const config = /^\/(?<expression>.*)\/(?<flags>\w*)$/.exec(regExpStr)?.groups;
+				const regExp = config
+					? new RegExp(config.expression!, config.flags || undefined)
+					: new RegExp(regExpStr, 'is');
+				const match = regExp.exec(stdout);
+
+				if (!match) {
+					throw new Error(
+						`${namespace}[${i}]: stdout token expression at ${position}:\n\n${tokenStr}\n\ndidn't match any result. stdout[${stdoutIndex}] (first 1000 chars):\n\n${stdout.slice(
+							0,
+							1000
+						)}`
+					);
+				}
+
+				return match.groups?.result ?? match[0]!;
+			}
+
+			return stdout;
 		}
 
+		// Static values
+		const value = staticValues[token.name];
+
+		if (value) return value;
+
+		throw new Error(`command[${i}]: value of token "<${token.name}>" at ${position} is empty.`);
+	};
+
+	for (let i = 0; i < commands.length; i++) {
+		let {command, cwd, ignoreErrors} = commands[i]!;
+
+		if (!options.parallelMode) stage(`${i + 1}/${options.commands.length}`);
+
+		// Fill the command template
+		let filledCommand: string | undefined;
+		try {
+			filledCommand = parseTemplate(command).map<string>(createTokenReplacer('command', i)).join('').trim();
+		} catch (error) {
+			throw new Error(`command[${i}] template error: ${error.message}`);
+		}
+
+		if (!filledCommand) throw new Error(`command[${i}]: template produced an empty command`);
+
 		// Execute the command
-		console.log(`===== COMMAND[${i}]: ==========\ntemplate: ${command}\nfilled: ${filledCommand}`);
+		console.log(
+			`===== COMMAND[${i}]: ==========\n${command}\n----- FILLED: --------------\n${filledCommand}\n============================`
+		);
 		const timeId = `command[${i}] time`;
 		console.time(timeId);
 
@@ -206,8 +148,7 @@ export default async ({id, item, options}: Payload, {stage, result}: ProcessorUt
 			process.child.stdout?.on('data', (buffer) => console.log(buffer.toString()));
 			process.child.stderr?.on('data', (buffer) => {
 				const data = buffer.toString();
-				console.log(data);
-				result.error(data);
+				console.error(data);
 			});
 
 			if (options.parallelMode) {
@@ -235,54 +176,145 @@ export default async ({id, item, options}: Payload, {stage, result}: ProcessorUt
 	await cleanup();
 
 	/**
-	 * Construct results.
+	 * Emit results.
 	 */
-	for (let i = 0; i < resultTemplates.length; i++) {
-		let {filledTemplate, type} = resultTemplates[i]!;
-		// {stdout[:N][:RegExp]}
-		// A copy of {stdout} token replacer from above, only changes are error messages and variable names
-		const regExp = /(?<!\\)\{stdout(:(?<tokenIndex>\d+))?(:(?<tokenRegExp>.+?))?(?<!\\)\}/g;
-		let match;
-		const matchTarget = filledTemplate;
-		while ((match = regExp.exec(matchTarget))) {
-			const token = match[0]!;
-			const tokenIndexStr = match.groups!.tokenIndex;
-			const tokenIndex = tokenIndexStr ? parseInt(tokenIndexStr, 10) : null;
-			const tokenRegExp = match.groups!.tokenRegExp;
-			const stdout = tokenIndex != null ? stdouts[tokenIndex] : stdouts[stdouts.length - 1];
+	for (let i = 0; i < options.resultTemplates.length; i++) {
+		let {template, type} = resultTemplates[i]!;
 
-			if (stdout == null) {
-				result.error(
-					`Token "${token}" used in result template, but stdout for command[${tokenIndex}] is not available.`
-				);
-				return;
-			}
-
-			if (tokenRegExp) {
-				const match = new RegExp(tokenRegExp.replaceAll('\\{', '{').replaceAll('\\}', '}'), 'is').exec(stdout);
-				if (match) {
-					const matchResult = match.groups?.result ?? match[0]!;
-					filledTemplate = filledTemplate.replace(token, matchResult);
-				} else {
-					result.error(
-						`Result template token "${token}" didn't match anything in command[${tokenIndex}] stdout.`
-					);
-					return;
-				}
-			} else {
-				filledTemplate = filledTemplate.replace(token, stdout);
-			}
+		let filledTemplate: string | undefined;
+		try {
+			filledTemplate = parseTemplate(template).map(createTokenReplacer('result', i)).join('').trim();
+		} catch (error) {
+			throw new Error(`result[${i}] template error: ${error.message}`);
 		}
 
-		filledTemplate = filledTemplate.trim();
-
-		// Emit only when non empty string, unless string result type is requested,
-		// in which case empty string might be a valid result.
-		if (filledTemplate || type === 'string') {
-			// Emit result
+		if (filledTemplate) {
 			result[type](filledTemplate || '');
+			if (resultMode === 'first') break;
 		} else {
-			result.error(`result[${i}] template produced an empty string.`);
+			if (resultMode === 'all') result.error(`result[${i}] template produced an empty string.`);
 		}
 	}
+}
+
+/**
+ * Template parser.
+ */
+
+type TokenString = {
+	index: number;
+	line: number;
+	column: number;
+	type: 'string';
+	value: string;
 };
+type TokenValue = {
+	index: number;
+	line: number;
+	column: number;
+	type: 'value';
+	name: string;
+	prop?: string;
+	args: string[];
+};
+type Token = TokenString | TokenValue;
+
+function parseTemplate(
+	template: string,
+	{valueStart = '<', valueEnd = '>', propStart = '[', propEnd = ']', argSeparator = ':', escapeChar = '\\'} = {}
+): Token[] {
+	const tokens: Token[] = [];
+	let currentToken: Token | null = null;
+	let line = 0;
+	let column = 0;
+
+	for (let i = 0; i < template.length; i++) {
+		const char = template[i];
+		const escaped = template[i - 1] === escapeChar;
+
+		if (char === '\n') {
+			line++;
+			column = 0;
+		} else {
+			column++;
+		}
+
+		if (char === escapeChar) continue;
+
+		if (char === valueStart && !escaped) {
+			if (currentToken?.type === 'value') {
+				throw new Error(
+					`char[${i}] (${template.slice(i, i + 5)}…) starts a value, while the one at char[${
+						currentToken.index
+					}] (${template.slice(currentToken.index, currentToken.index + 5)}…) hasn't been terminated.`
+				);
+			}
+			currentToken = {type: 'value', name: '', args: [], index: i, line, column};
+			tokens.push(currentToken);
+			continue;
+		}
+
+		if (!currentToken) {
+			currentToken = {type: 'string', value: '', index: i, line, column};
+			tokens.push(currentToken);
+		}
+
+		if (currentToken.type === 'string') {
+			currentToken.value += char;
+			continue;
+		}
+
+		if (char === valueEnd && !escaped) {
+			currentToken = null;
+			continue;
+		} else if (i + 1 >= template.length) {
+			throw new Error(
+				`template ends before value token "${currentToken.name}" at ${currentToken.line}:${currentToken.column} is closed`
+			);
+		}
+
+		if (char === argSeparator && !escaped) {
+			currentToken.args.push('');
+			continue;
+		}
+
+		if (char === propStart && !escaped) {
+			currentToken.prop = '';
+			continue;
+		}
+
+		if (char === propEnd && !escaped) {
+			if (!currentToken.prop) {
+				throw new Error(`char[${i}] token "${template.slice(currentToken.index, i)}}" property is empty`);
+			}
+
+			const nextChar = template[i + 1];
+
+			if (nextChar !== argSeparator && nextChar !== valueEnd) {
+				throw new Error(
+					`char[${i + 1}] invalid character "${nextChar}" after value property (${template.slice(
+						currentToken.index,
+						i + 1
+					)})`
+				);
+			}
+
+			continue;
+		}
+
+		if (currentToken.args.length > 0) {
+			currentToken.args[currentToken.args.length - 1] += char;
+		} else if (currentToken.prop != null) {
+			currentToken.prop += char;
+		} else {
+			currentToken.name += char;
+		}
+	}
+
+	// Remove new lines and decorative white space around them from string tokens
+	for (const token of tokens) {
+		if (token.type === 'string') token.value = token.value.replaceAll(/\s*\n\s*/g, ' ');
+	}
+
+	return tokens;
+}
