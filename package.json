@@ -23,9 +23,9 @@
     "clean": "rimraf dist",
     "start": "npm-run-all clean watch",
     "preversion": "npm-run-all clean build",
-    "push": "git push",
-    "publish": "npm publish",
-    "postversion": "npm-run-all push publish"
+    "git-push": "git push",
+    "npm-publish": "npm publish",
+    "postversion": "npm-run-all git-push npm-publish"
   },
   "devDependencies": {
     "@drovp/types": "^0.0.9",
