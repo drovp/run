@@ -101,6 +101,7 @@ const optionsSchema: OptionsSchema<Options> = [
 			},
 		],
 		title: 'Commands',
+		itemTitle: 'Command',
 		description: (value, options) =>
 			`<p>List of commands to run one after another.</p>
 				<p>New lines and indentation around them will be removed to construct a single command out of each textarea.
@@ -113,15 +114,12 @@ const optionsSchema: OptionsSchema<Options> = [
 				but some CLIs just can't help themselves to not abuse stderr for not actual errors, so just
 				click this checkbox for those.</p>`
 						: ''
-				}`,
-	},
-	{
-		type: 'divider',
-		description: `
+				}
 				<h4>Available tokens:</h4>
 				<p>
+					Platform folders: <code>&lt;tmp&gt;</code>, <code>&lt;home&gt;</code>, <code>&lt;downloads&gt;</code>, <code>&lt;documents&gt;</code>, <code>&lt;pictures&gt;</code>, <code>&lt;music&gt;</code>, <code>&lt;videos&gt;</code>, <code>&lt;desktop&gt;</code><br>
 					<code>&lt;path&gt;</code>, <code>&lt;url&gt;</code>, <code>&lt;string&gt;</code> - file/dir path, url, or string contents, depending on input type<br>
-					<code>&lt;payload&gt;</code> - if you've enabled more than one type input, this is either path, url, or string<br>
+					<code>&lt;payload&gt;</code> - either <code>&lt;path&gt;</code>, <code>&lt;url&gt;</code>, or <code>&lt;string&gt;</code>, depending on item type<br>
 					<code>&lt;basename&gt;</code> - path basename (<code>/foo/bar.jpg</code> → <code>bar.jpg</code>)<br>
 					<code>&lt;filename&gt;</code> - file name without the extension<br>
 					<code>&lt;extname&gt;</code> - file extension WITH the dot<br>
@@ -143,6 +141,7 @@ const optionsSchema: OptionsSchema<Options> = [
 		name: 'resultTemplates',
 		type: 'collection',
 		title: 'Results',
+		itemTitle: 'Result',
 		description: `Templates to emit one or multiple results after everything's done.`,
 		schema: [
 			{

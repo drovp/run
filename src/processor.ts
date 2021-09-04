@@ -5,11 +5,12 @@ import * as Path from 'path';
 import * as CP from 'child_process';
 import {promisify} from 'util';
 import {promises as FSP} from 'fs';
+import {isPlatformPathIdentifier, getPlatformPath} from 'platform-paths';
 
 const exec = promisify(CP.exec);
 
 function eem(error: any, preferStack = false) {
-	return error instanceof Error ? preferStack ? error.stack || error.message : error.message : `${error}`;
+	return error instanceof Error ? (preferStack ? error.stack || error.message : error.message) : `${error}`;
 }
 
 export default async function ({id, item, options}: Payload, {stage, result}: ProcessorUtils) {
@@ -61,61 +62,6 @@ export default async function ({id, item, options}: Payload, {stage, result}: Pr
 	// Execute commands
 	const parallelPromises = [];
 
-	// Create token replacer for a namespace
-	const createTokenReplacer = (namespace: string, i: number) => (token: Token) => {
-		const position = `${token.line}:${token.column}`;
-
-		if (token.type === 'string') return token.value;
-
-		// Stdout
-		if (token.name === 'stdout') {
-			const tokenStr = token.args.length > 0 ? `<stdout:${token.args.join(':')}>` : `<stdout>`;
-			let stdoutIndex: number = (token.prop ?? stdouts.length - 1) as number;
-			let regExpStr: string | undefined = token.args[0];
-
-			if (token.args.length > 1) {
-				throw new Error(
-					`${namespace}[${i}]: token at ${position} has too many arguments:\n\n${tokenStr}\n\nMaybe unescaped colon?`
-				);
-			}
-
-			const stdout = stdouts[stdoutIndex!];
-
-			if (!stdout)
-				throw new Error(
-					`${namespace}[${i}]: token at ${position}:\n\n${tokenStr}\n\nreferences non-existent stdout index "${stdoutIndex}".`
-				);
-
-			if (regExpStr) {
-				const config = /^\/(?<expression>.*)\/(?<flags>\w*)$/.exec(regExpStr)?.groups;
-				const regExp = config
-					? new RegExp(config.expression!, config.flags || undefined)
-					: new RegExp(regExpStr, 'is');
-				const match = regExp.exec(stdout);
-
-				if (!match) {
-					throw new Error(
-						`${namespace}[${i}]: stdout token expression at ${position}:\n\n${tokenStr}\n\ndidn't match any result. stdout[${stdoutIndex}] (first 1000 chars):\n\n${stdout.slice(
-							0,
-							1000
-						)}`
-					);
-				}
-
-				return match.groups?.result ?? match[0]!;
-			}
-
-			return stdout;
-		}
-
-		// Static values
-		const value = staticValues[token.name];
-
-		if (value) return value;
-
-		throw new Error(`command[${i}]: value of token "<${token.name}>" at ${position} is empty.`);
-	};
-
 	for (let i = 0; i < commands.length; i++) {
 		let {command, cwd, ignoreErrors} = commands[i]!;
 
@@ -124,7 +70,7 @@ export default async function ({id, item, options}: Payload, {stage, result}: Pr
 		// Fill the command template
 		let filledCommand: string | undefined;
 		try {
-			filledCommand = parseTemplate(command).map<string>(createTokenReplacer('command', i)).join('').trim();
+			filledCommand = await detokenize(`command[${i}]`, parseTemplate(command), staticValues, stdouts);
 		} catch (error) {
 			throw new Error(`command[${i}] template error: ${eem(error)}`);
 		}
@@ -187,7 +133,7 @@ export default async function ({id, item, options}: Payload, {stage, result}: Pr
 
 		let filledTemplate: string | undefined;
 		try {
-			filledTemplate = parseTemplate(template).map(createTokenReplacer('result', i)).join('').trim();
+			filledTemplate = await detokenize(`result[${i}]`, parseTemplate(template), staticValues, stdouts);
 		} catch (error) {
 			throw new Error(`result[${i}] template error: ${eem(error)}`);
 		}
@@ -321,4 +267,83 @@ function parseTemplate(
 	}
 
 	return tokens;
+}
+
+/**
+ * Detokenizer.
+ */
+async function detokenize(namespace: string, tokens: Token[], staticValues: Record<string, string>, stdouts: string[]) {
+	let result = '';
+
+	for (const token of tokens) {
+		const position = `${token.line}:${token.column}`;
+
+		if (token.type === 'string') {
+			result += token.value;
+			continue;
+		}
+
+		// Stdout
+		if (token.name === 'stdout') {
+			const tokenStr = token.args.length > 0 ? `<stdout:${token.args.join(':')}>` : `<stdout>`;
+			let stdoutIndex: number = (token.prop ?? stdouts.length - 1) as number;
+			let regExpStr: string | undefined = token.args[0];
+
+			if (token.args.length > 1) {
+				throw new Error(
+					`${namespace}: token at ${position} has too many arguments:\n\n${tokenStr}\n\nMaybe unescaped colon?`
+				);
+			}
+
+			const stdout = stdouts[stdoutIndex!];
+
+			if (!stdout)
+				throw new Error(
+					`${namespace}: token at ${position}:\n\n${tokenStr}\n\nreferences non-existent stdout index "${stdoutIndex}".`
+				);
+
+			if (regExpStr) {
+				const config = /^\/(?<expression>.*)\/(?<flags>\w*)$/.exec(regExpStr)?.groups;
+				const regExp = config
+					? new RegExp(config.expression!, config.flags || undefined)
+					: new RegExp(regExpStr, 'is');
+				const match = regExp.exec(stdout);
+
+				if (!match) {
+					throw new Error(
+						`${namespace}: stdout token expression at ${position}:\n\n${tokenStr}\n\ndidn't match any result. stdout[${stdoutIndex}] (first 1000 chars):\n\n${stdout.slice(
+							0,
+							1000
+						)}`
+					);
+				}
+
+				result += match.groups?.result ?? match[0]!;
+				continue;
+			}
+
+			result += stdout;
+			continue;
+		}
+
+		// Static values
+		const staticValue = staticValues[token.name];
+		if (staticValue) {
+			result += staticValue;
+			continue;
+		}
+
+		// Platform paths
+		if (isPlatformPathIdentifier(token.name)) {
+			const path = await getPlatformPath(token.name);
+			if (path) {
+				result += path;
+				continue;
+			}
+		}
+
+		throw new Error(`${namespace}: value of token "<${token.name}>" at ${position} is empty.`);
+	}
+
+	return result.trim();
 }
