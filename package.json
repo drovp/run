@@ -7,7 +7,11 @@
   "repository": "github:drovp/run",
   "main": "dist/index.js",
   "keywords": [
-    "drovpplugin"
+    "drovpplugin",
+    "run",
+    "execute",
+    "cli",
+    "command"
   ],
   "author": "tomasklaen",
   "license": "MIT",
@@ -35,6 +39,6 @@
     "typescript": "^4.4.2"
   },
   "dependencies": {
-    "platform-paths": "^1.2.1"
+    "platform-paths": "^1.2.2"
   }
 }
