@@ -263,7 +263,7 @@ function parseTemplate(
 
 	// Remove new lines and decorative white space around them from string tokens
 	for (const token of tokens) {
-		if (token.type === 'string') token.value = token.value.replaceAll(/\s*\n\s*/g, ' ');
+		if (token.type === 'string') token.value = token.value.replaceAll(/\s*(\^|\\)?\n\s*/g, ' ');
 	}
 
 	return tokens;
