@@ -83,7 +83,7 @@ const optionsSchema: OptionsSchema<Options> = [
 			{
 				name: 'command',
 				type: 'string',
-				lines: 3,
+				rows: 3,
 				title: 'Command',
 			},
 			{
@@ -154,7 +154,7 @@ const optionsSchema: OptionsSchema<Options> = [
 			{
 				name: 'template',
 				type: 'string',
-				lines: 2,
+				rows: 2,
 				default: '',
 				title: 'Template',
 				description: (_, {resultTemplates}, path) =>
