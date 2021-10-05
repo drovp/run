@@ -74,7 +74,7 @@ const optionsSchema: OptionsSchema<Options> = [
 		type: 'boolean',
 		default: false,
 		title: `Parallel mode`,
-		description: `Run all commands at the same time.<br>In parallel mode, commands don't have access to <code>{stdout}</code> tokens.`,
+		description: `Run all commands at the same time.<br>In parallel mode, commands don't have access to <code>&lt;stdout&gt;</code> tokens.`,
 	},
 	{
 		name: 'commands',
@@ -103,46 +103,45 @@ const optionsSchema: OptionsSchema<Options> = [
 		title: 'Commands',
 		itemTitle: 'Command',
 		description: (value, options) =>
-			`<p>List of commands to run one after another.</p>
-				<p>New lines and indentation around them will be removed to construct a single command out of each textarea.
-				This is so you can format and make a better sense out of big commands.</p>
-				<p><b>CWD</b> - current working directory (supports tokens). By default, <b>run</b> sets it to a temporary
-				folder created for each operation, and deletes it at the end of it.</p>
-				${
-					!options.parallelMode
-						? `<p><b>Ignore errors</b> - <b>run</b> stops the chain, and won't emit results if any command emits errors,
-				but some CLIs just can't help themselves to not abuse stderr for not actual errors, so just
-				click this checkbox for those.</p>`
-						: ''
-				}
-				<h4>Available tokens:</h4>
-				<p>
-					Platform folders: <code>&lt;tmp&gt;</code>, <code>&lt;home&gt;</code>, <code>&lt;downloads&gt;</code>, <code>&lt;documents&gt;</code>, <code>&lt;pictures&gt;</code>, <code>&lt;music&gt;</code>, <code>&lt;videos&gt;</code>, <code>&lt;desktop&gt;</code><br>
-					<code>&lt;path&gt;</code>, <code>&lt;url&gt;</code>, <code>&lt;string&gt;</code> - file/dir path, url, or string contents, depending on input type<br>
-					<code>&lt;payload&gt;</code> - either <code>&lt;path&gt;</code>, <code>&lt;url&gt;</code>, or <code>&lt;string&gt;</code>, depending on item type<br>
-					<code>&lt;basename&gt;</code> - path basename (<code>/foo/bar.jpg</code> → <code>bar.jpg</code>)<br>
-					<code>&lt;filename&gt;</code> - file name without the extension<br>
-					<code>&lt;extname&gt;</code> - file extension WITH the dot<br>
-					<code>&lt;ext&gt;</code> - file extension without the dot<br>
-					<code>&lt;dirname&gt;</code> - directory path (<code>/foo/bar/baz.jpg</code> → <code>/foo/bar</code>)<br>
-					<code>&lt;dirbasename&gt;</code> - name of a parent directory (<code>/foo/bar/baz.jpg</code> → <code>bar</code>)<br>
-					<code>&lt;stdout&gt;</code>, <code>&lt;stdout[N]&gt;</code> - stdout of the last or Nth command, starting at 0 (<code>&lt;stdout[0]&gt;</code>)<br>
-					<code>&lt;stdout:RegExp&gt;</code>, <code>&lt;stdout[N]:RegExp&gt;</code> - <a href="https://regex101.com/">ECMAScript (JS) RegExp</a> match of the stdout of the last or Nth command.<br>
-				</p>
-				<ul>
-					<li><code>&lt;&gt;:\\</code> characters have to be escaped with <code>\\&lt;\\&gt;\\:\\\\</code></li>
-					<li>Use <code>(?\\&lt;result\\&gt;...)</code> named capture group to specify only the portion of the RegExp to extract, otherwise the whole match is going to be used.</li>
-					<li>Example: if you're trying to match url in a string like <code>'url: https://example.com'</code> you'd use <code>&lt;stdout:url\\: *(?\\&lt;result\\&gt;https?:\/\/[^ ]+)&gt;</code></li>
-					<li>Un-configured RegExp is created with <code>is</code> flags (case insensitive + dot matches new line).</li>
-					<li>You can configure a RegExp by wrapping it in slashes: <code>&lt;stdout:/expression/im&gt;</code>.</li>
-				</ul>`,
+			`<p>List of commands to run one after another. Expand this description for docs.</p>
+			<p>New lines and indentation around them will be removed to construct a single command out of each textarea, so you an use new lines to separate parameters. New line escapes <code>\\</code> and <code>^</code> are also supported.</p>
+			<p><b>CWD</b> - current working directory (supports tokens). By default, <b>run</b> sets it to a temporary
+			folder created for each operation, and deletes it at the end of it.</p>
+			${
+				!options.parallelMode
+					? `<p><b>Ignore errors</b> - <b>run</b> stops the chain, and won't emit results if any command emits errors,
+			but some CLIs just can't help themselves to not abuse stderr for not actual errors, so just
+			click this checkbox for those.</p>`
+					: ''
+			}
+			<h4>Available tokens:</h4>
+			<p>
+				Platform folders: <code>&lt;tmp&gt;</code>, <code>&lt;home&gt;</code>, <code>&lt;downloads&gt;</code>, <code>&lt;documents&gt;</code>, <code>&lt;pictures&gt;</code>, <code>&lt;music&gt;</code>, <code>&lt;videos&gt;</code>, <code>&lt;desktop&gt;</code><br>
+				<code>&lt;path&gt;</code>, <code>&lt;url&gt;</code>, <code>&lt;string&gt;</code> - file/dir path, url, or string contents, depending on input type<br>
+				<code>&lt;payload&gt;</code> - either <code>&lt;path&gt;</code>, <code>&lt;url&gt;</code>, or <code>&lt;string&gt;</code>, depending on item type<br>
+				<code>&lt;basename&gt;</code> - path basename (<code>/foo/bar.jpg</code> → <code>bar.jpg</code>)<br>
+				<code>&lt;filename&gt;</code> - file name without the extension<br>
+				<code>&lt;extname&gt;</code> - file extension WITH the dot<br>
+				<code>&lt;ext&gt;</code> - file extension without the dot<br>
+				<code>&lt;dirname&gt;</code> - directory path (<code>/foo/bar/baz.jpg</code> → <code>/foo/bar</code>)<br>
+				<code>&lt;dirbasename&gt;</code> - name of a parent directory (<code>/foo/bar/baz.jpg</code> → <code>bar</code>)<br>
+				<code>&lt;stdout&gt;</code>, <code>&lt;stdout[N]&gt;</code> - stdout of the last or Nth command, starting at 0 (<code>&lt;stdout[0]&gt;</code>)<br>
+				<code>&lt;stdout:RegExp&gt;</code>, <code>&lt;stdout[N]:RegExp&gt;</code> - <a href="https://regex101.com/">ECMAScript (JS) RegExp</a> match of the stdout of the last or Nth command.<br>
+			</p>
+			<ul>
+				<li><code>&lt;&gt;:\\</code> characters have to be escaped with <code>\\&lt;\\&gt;\\:\\\\</code></li>
+				<li>Use <code>(?\\&lt;result\\&gt;...)</code> named capture group to specify only the portion of the RegExp to extract, otherwise the whole match is going to be used.</li>
+				<li>Example: if you're trying to match url in a string like <code>'url: https://example.com'</code> you'd use <code>&lt;stdout:url\\: *(?\\&lt;result\\&gt;https?:\/\/[^ ]+)&gt;</code></li>
+				<li>Un-configured RegExp is created with <code>is</code> flags (case insensitive + dot matches new line).</li>
+				<li>You can configure a RegExp by wrapping it in slashes: <code>&lt;stdout:/expression/im&gt;</code>.</li>
+			</ul>`,
 	},
 	{
 		name: 'resultTemplates',
 		type: 'collection',
 		title: 'Results',
 		itemTitle: 'Result',
-		description: `Templates to emit one or multiple results after everything's done.`,
+		description: `Templates to emit results after everything's done.`,
 		schema: [
 			{
 				name: 'type',
