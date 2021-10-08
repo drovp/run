@@ -1,6 +1,6 @@
 {
   "name": "@drovp/run",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Execute one or multiple console commands on dropped items.",
   "homepage": "https://github.com/drovp/run",
   "bugs": "https://github.com/drovp/run/issues",
