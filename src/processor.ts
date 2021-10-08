@@ -13,6 +13,15 @@ function eem(error: any, preferStack = false) {
 	return error instanceof Error ? (preferStack ? error.stack || error.message : error.message) : `${error}`;
 }
 
+async function pathExists(path: string) {
+	try {
+		return await FSP.stat(path);
+	} catch (error) {
+		if ((error as any)?.code === 'ENOENT') return false;
+		throw error;
+	}
+}
+
 export default async function ({id, item, options}: Payload, {stage, result}: ProcessorUtils) {
 	const staticValues: Record<string, string> = {};
 	const stdouts: string[] = [];
@@ -51,10 +60,14 @@ export default async function ({id, item, options}: Payload, {stage, result}: Pr
 
 	// Create temporary directory
 	const tmpDir = Path.join(OS.tmpdir(), `drovp-run-operation-${id}`);
-	console.log(`creating temporary working directory`);
-	console.log(`path: "${tmpDir}"`);
-	await FSP.mkdir(tmpDir, {recursive: true});
+	const tmpDirIsNeeded = commands.find(({cwd}) => cwd.trim().length === 0) != null;
+	if (tmpDirIsNeeded) {
+		console.log(`creating temporary working directory`);
+		console.log(`path: "${tmpDir}"`);
+		await FSP.mkdir(tmpDir, {recursive: true});
+	}
 	const cleanup = async () => {
+		if (!tmpDirIsNeeded) return;
 		console.log(`deleting temporary working directory`);
 		await FSP.rm(tmpDir, {recursive: true});
 	};
@@ -85,7 +98,31 @@ export default async function ({id, item, options}: Payload, {stage, result}: Pr
 		console.time(timeId);
 
 		cwd = `${cwd}`.trim();
-		cwd = cwd.length > 0 ? cwd : tmpDir;
+		let cwdPath: string;
+
+		if (cwd.length > 0) {
+			// Detokenize cwd
+			try {
+				cwdPath = await detokenize(`command[${i}]`, parseTemplate(cwd), staticValues, stdouts);
+			} catch (error) {
+				throw new Error(`command[${i}] cwd template error: ${eem(error)}`);
+			}
+
+			// Ensure it exists
+			try {
+				const stat = await pathExists(cwdPath);
+				if (!stat || stat.isDirectory()) await FSP.mkdir(cwdPath, {recursive: true});
+			} catch (error) {
+				throw new Error(
+					`command[${i}]: Error creating cwd "${cwd}"${
+						cwd !== cwdPath ? `, expanded into "${cwdPath}":` : ''
+					}: ${eem(error)}`
+				);
+			}
+		} else {
+			cwdPath = tmpDir;
+		}
+
 		const resolve = (stdout: string) => {
 			stdouts[i] = `${stdout}`;
 		};
@@ -94,7 +131,7 @@ export default async function ({id, item, options}: Payload, {stage, result}: Pr
 		};
 
 		try {
-			const process = exec(filledCommand, {cwd});
+			const process = exec(filledCommand, {cwd: cwdPath});
 			process.child.stdout?.on('data', (buffer) => console.log(buffer.toString()));
 			process.child.stderr?.on('data', (buffer) => {
 				const data = buffer.toString();
