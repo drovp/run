@@ -22,38 +22,38 @@ async function pathExists(path: string) {
 	}
 }
 
-export default async function ({id, item, options}: Payload, {stage, result}: ProcessorUtils) {
+export default async function ({id, input, options}: Payload, {stage, output}: ProcessorUtils) {
 	const staticValues: Record<string, string> = {};
 	const stdouts: string[] = [];
-	const {commands, resultTemplates, resultMode} = options;
+	const {commands, outputTemplates, outputMode} = options;
 
-	switch (item.kind) {
+	switch (input.kind) {
 		case 'directory':
 		case 'file': {
-			const extname = Path.extname(item.path);
-			const dirname = Path.dirname(item.path);
+			const extname = Path.extname(input.path);
+			const dirname = Path.dirname(input.path);
 			Object.assign(staticValues, {
-				path: item.path,
-				payload: item.path,
+				path: input.path,
+				payload: input.path,
 				extname,
 				ext: extname.slice(1),
 				dirname,
-				basename: Path.basename(item.path),
-				filename: Path.basename(item.path, extname),
+				basename: Path.basename(input.path),
+				filename: Path.basename(input.path, extname),
 				dirbasename: Path.basename(dirname),
 			});
 			break;
 		}
 		case 'string':
 			Object.assign(staticValues, {
-				string: item.contents,
-				payload: item.contents,
+				string: input.contents,
+				payload: input.contents,
 			});
 			break;
 		case 'url':
 			Object.assign(staticValues, {
-				url: item.url,
-				payload: item.url,
+				url: input.url,
+				payload: input.url,
 			});
 			break;
 	}
@@ -127,7 +127,7 @@ export default async function ({id, item, options}: Payload, {stage, result}: Pr
 			stdouts[i] = `${stdout}`;
 		};
 		const reject = (error: any) => {
-			result.error(error?.stack || error?.message || `${error}`);
+			output.error(error?.stack || error?.message || `${error}`);
 		};
 
 		try {
@@ -163,23 +163,23 @@ export default async function ({id, item, options}: Payload, {stage, result}: Pr
 	await cleanup();
 
 	/**
-	 * Emit results.
+	 * Emit outputs.
 	 */
-	for (let i = 0; i < options.resultTemplates.length; i++) {
-		let {template, type} = resultTemplates[i]!;
+	for (let i = 0; i < options.outputTemplates.length; i++) {
+		let {template, type} = outputTemplates[i]!;
 
 		let filledTemplate: string | undefined;
 		try {
-			filledTemplate = await detokenize(`result[${i}]`, parseTemplate(template), staticValues, stdouts);
+			filledTemplate = await detokenize(`output[${i}]`, parseTemplate(template), staticValues, stdouts);
 		} catch (error) {
-			throw new Error(`result[${i}] template error: ${eem(error)}`);
+			throw new Error(`output[${i}] template error: ${eem(error)}`);
 		}
 
 		if (filledTemplate) {
-			result[type](filledTemplate || '');
-			if (resultMode === 'first') break;
+			output[type](filledTemplate || '');
+			if (outputMode === 'first') break;
 		} else {
-			if (resultMode === 'all') result.error(`result[${i}] template produced an empty string.`);
+			if (outputMode === 'all') output.error(`output[${i}] template produced an empty string.`);
 		}
 	}
 }

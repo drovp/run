@@ -12,11 +12,11 @@ type Options = {
 		cwd: string;
 		ignoreErrors: boolean;
 	}[];
-	resultTemplates: {
+	outputTemplates: {
 		type: 'file' | 'directory' | 'url' | 'string';
 		template: string;
 	}[];
-	resultMode: 'all' | 'any' | 'first';
+	outputMode: 'all' | 'any' | 'first';
 };
 
 const templateDescription = {
@@ -109,7 +109,7 @@ const optionsSchema: OptionsSchema<Options> = [
 			folder created for each operation, and deletes it at the end of it.</p>
 			${
 				!options.parallelMode
-					? `<p><b>Ignore errors</b> - <b>run</b> stops the chain, and won't emit results if any command emits errors,
+					? `<p><b>Ignore errors</b> - <b>run</b> stops the chain, and won't emit outputs if any command emits errors,
 			but some CLIs just can't help themselves to not abuse stderr for not actual errors, so just
 			click this checkbox for those.</p>`
 					: ''
@@ -137,11 +137,11 @@ const optionsSchema: OptionsSchema<Options> = [
 			</ul>`,
 	},
 	{
-		name: 'resultTemplates',
+		name: 'outputTemplates',
 		type: 'collection',
-		title: 'Results',
-		itemTitle: 'Result',
-		description: `Templates to emit results after everything's done.`,
+		title: 'Outputs',
+		itemTitle: 'Output',
+		description: `Templates to emit outputs after everything's done.`,
 		schema: [
 			{
 				name: 'type',
@@ -156,16 +156,16 @@ const optionsSchema: OptionsSchema<Options> = [
 				rows: 2,
 				default: '',
 				title: 'Template',
-				description: (_, {resultTemplates}, path) =>
+				description: (_, {outputTemplates}, path) =>
 					`${
-						templateDescription[resultTemplates[path[1] as number]!.type]
+						templateDescription[outputTemplates[path[1] as number]!.type]
 					} Supports same tokens as commands.`,
 			},
 		],
 		default: [],
 	},
 	{
-		name: 'resultMode',
+		name: 'outputMode',
 		type: 'select',
 		options: ['all', 'any', 'first'],
 		default: 'all',
@@ -176,7 +176,7 @@ const optionsSchema: OptionsSchema<Options> = [
 				: value === 'any'
 				? `Emit only templates that produced something.`
 				: `Emit only the first template that produced something.`,
-		isHidden: (_, options) => options.resultTemplates.length === 0,
+		isHidden: (_, options) => options.outputTemplates.length === 0,
 	},
 ];
 
