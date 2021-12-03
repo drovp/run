@@ -79,77 +79,22 @@ const optionsSchema: OptionsSchema<Options> = [
 		title: 'Commands',
 		itemTitle: 'Command',
 		description: (value, options) =>
-			`<p>List of commands to run one after another. Expand this description for docs.</p>
-			<p>Commands, as well as cwd fields and output templates are JavaScript template literals allowing embedded expressions with access to a lot of variables. Example:</p>
-			<pre><code>binary-name --param "\${variable}"</code></pre>
-			<p>You can use new lines and indentation to visually separate parameters, they'll be removed before the template is expanded. New line terminal escapes <code>\\</code> and <code>^</code> are also supported.</p>
+			`<p>List of commands to run one after another.</p>
+			<p><b>Command</b> and <b>CWD</b> fields are templates supporting JavaScript template literals. See instructions for documentation.</p>
 			<p><b>CWD</b> - current working directory. By default, <b>run</b> sets it to a temporary
 			folder created for each operation, and deletes it at the end of it.</p>
 			${
 				!options.parallelMode
 					? `<p><b>Ignore errors</b> - by default, <b>run</b> stops the chain, and won't emit outputs if command errors out. Enable this if errors are expected for current command.</p>`
 					: ''
-			}
-
-			<h4>Common variables:</h4>
-			<p>
-				<code>payload</code> - either <code>path</code>, <code>url</code>, or <code>contents</code>, depending on item type<br>
-				<code>type</code> - item type: <code>file/directory/url/string</code><br>
-				Platform folders: <code>tmp</code>, <code>home</code>, <code>downloads</code>, <code>documents</code>, <code>pictures</code>, <code>music</code>, <code>videos</code>, <code>desktop</code><br>
-				<code>cwd</code> - path to current working directory<br>
-				<code>stdout</code> - stdout of the last command<br>
-				<code>stdouts[i]</code> - an array of all previous stdouts up until this point (unavailable in parallel mode)<br>
-				<code>stderr</code> - stderr of the last command<br>
-				<code>stderrs[i]</code> - an array of all previous stderrs up until this point (unavailable in parallel mode)<br>
-				<code>commondir</code> - in bulked files mode, this is the common directory for all input files<br>
-				<code>starttime</code> - time when operation started in unix epoch milliseconds<br>
-			</p>
-
-			<h4>File/Directory variables:</h4>
-			<p>
-				<code>path</code> - file/directory path (<code>/foo/fam/bar.jpg</code>)<br>
-				<code>basename</code> - path basename (<code>bar.jpg</code>)<br>
-				<code>filename</code> - file name without the extension (<code>bar</code>)<br>
-				<code>extname</code> - file extension WITH the dot (<code>.jpg</code>)<br>
-				<code>ext</code> - file extension without the dot (<code>jpg</code>)<br>
-				<code>dirname</code> - directory path (<code>/foo/fam</code>)<br>
-				<code>dirbasename</code> - basename of a parent directory (<code>fam</code>)<br>
-			</p>
-
-			<h4>URL variables:</h4>
-			<p>
-				<code>url</code> - URL (<code>https://johndoe:horses@example.com/foo/bar</code>)<br>
-				<code>origin</code> - URL origin (<code>https://example.com</code>)<br>
-				<code>hostname</code> - domain (<code>example.com</code>)<br>
-				<code>pathname</code> - pathname (<code>/foo/bar</code>)<br>
-				<code>username</code> - username specified before the domain name (<code>johndoe</code>)<br>
-				<code>password</code> - password specified before the domain name (<code>horses</code>)<br>
-			</p>
-
-			<h4>String variables:</h4>
-			<p>
-				<code>contents</code> - string contents<br>
-			</p>
-
-			<h4>Bulked mode:</h4>
-			<p>
-				In bulked mode, all item related variables (payload, path, ...) are missing, and only available on an <code>inputs[i]</code> array as individual items. Example to concatenate all passed videos into one using ffmpeg:
-			</p>
-			<pre><code>ffmpeg\n\t-i "concat:\${inputs.map(f => f.path).join('|')}"\n\t-codec copy output.mkv</code></pre>
-
-			<h4>Utilities:</h4>
-			<ul>
-				<code>Path</code> - Reference to <a href="https://nodejs.org/api/path.html">Node.js' <code>path</code> module</a>. Example: <code>Path.relative(foo, bar)</code><br>
-				<code>time()</code> - <a href="https://day.js.org/docs/en/display/format">day.js</a> constructor to help with time. Example: <code>time().format('YY')</code><br>
-				<code>uid(size? = 10)</code> - Unique string generator. Size argument is optional, default is 10.<br>
-			</ul>`,
+			}`,
 	},
 	{
 		name: 'outputs',
 		type: 'collection',
 		title: 'Outputs',
 		itemTitle: 'Output',
-		description: `Templates to emit outputs after everything's done.`,
+		description: `Templates to emit outputs after everything's done. See instructions for documentation.`,
 		schema: [
 			{
 				name: 'type',
@@ -243,6 +188,7 @@ export type Payload = PayloadData<Options, typeof acceptsFlags>;
 export default (plugin: Plugin) => {
 	plugin.registerProcessor<Payload>('run', {
 		main: 'dist/processor.js',
+		instructions: 'instructions.md',
 		description: 'Executes one or multiple console commands on dropped items.',
 		accepts: acceptsFlags,
 		bulk: (items, options) => options.bulk,

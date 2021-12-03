@@ -27,7 +27,7 @@ export default async function (payload: Payload, {stage, output}: ProcessorUtils
 	};
 	const {commands, outputs, outputMode} = options;
 
-	// Create normalized inputs
+	// Normalize inputs
 	const inputs: Record<string, any>[] = [];
 
 	for (const input of payload.inputs) {
@@ -79,11 +79,14 @@ export default async function (payload: Payload, {stage, output}: ProcessorUtils
 	for (let i = 1; i < onlyFiles.length; i++) commondir = commonPathsRoot(commondir, onlyFiles[i]!.path);
 	commonVariables.commondir = commondir;
 
-	// Platform paths
-	const allCommandAndOutputTemplates =
-		commands.map(({template}) => template).join(';') + outputs.map(({template}) => template).join(';');
+	// Query needed platform paths
+	const allTemplates = [
+		...commands.map(({template}) => template),
+		...commands.map(({cwd}) => cwd),
+		...outputs.map(({template}) => template),
+	].join(';');
 	for (const name of Object.keys(platformPaths) as (keyof typeof platformPaths)[]) {
-		if (allCommandAndOutputTemplates.includes(name)) commonVariables[name] = await platformPaths[name]();
+		if (allTemplates.includes(name)) commonVariables[name] = await platformPaths[name]();
 	}
 
 	// Stdouts
