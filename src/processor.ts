@@ -65,7 +65,6 @@ export default async function (payload: Payload, {stage, output}: ProcessorUtils
 	}
 
 	// Add them to variables
-
 	if (options.bulk) {
 		commonVariables.inputs = inputs;
 	} else if (inputs.length > 0) {
