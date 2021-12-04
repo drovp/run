@@ -33,22 +33,22 @@ Platform folder paths:
 
 ### File/Directory variables
 
-`path` - file/directory path (`/foo/fam/bar.jpg`)
-`basename` - path basename (`bar.jpg`)
-`filename` - file name without the extension (`bar`)
-`extname` - file extension WITH the dot (`.jpg`)
-`ext` - file extension without the dot (`jpg`)
-`dirname` - directory path (`/foo/fam`)
-`dirbasename` - basename of a parent directory (`fam`)
+`path` - file/directory path → `/foo/fam/bar.jpg`
+`basename` - path basename → `bar.jpg`
+`filename` - file name without the extension → `bar`
+`extname` - file extension WITH the dot → `.jpg`
+`ext` - file extension without the dot → `jpg`
+`dirname` - directory path → `/foo/fam`
+`dirbasename` - basename of a parent directory → `fam`
 
 ### URL variables
 
-`url` - URL (`https://johndoe:horses@example.com/foo/bar`)
-`origin` - URL origin (`https://example.com`)
-`hostname` - domain (`example.com`)
-`pathname` - pathname (`/foo/bar`)
-`username` - username specified before the domain name (`johndoe`)
-`password` - password specified before the domain name (`horses`)
+`url` - URL → `https://johndoe:horses@example.com/foo/bar`
+`origin` - URL origin → `https://example.com`
+`hostname` - domain → `example.com`
+`pathname` - pathname → `/foo/bar`
+`username` - username specified before the domain name → `johndoe`
+`password` - password specified before the domain name → `horses`
 
 ### String variables
 
