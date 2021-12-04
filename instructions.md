@@ -67,5 +67,6 @@ In bulked mode, all item related variables (`payload`, `path`, ...) are missing,
 ```
 ffmpeg
 	-i "concat:${inputs.map(f => f.path).join('|')}"
-	-codec copy output.mkv
+	-codec copy
+	"${inputs[0].filename}-concat.${inputs[0].ext}"
 ```
