@@ -28,8 +28,7 @@ New line terminal escapes `\` and `^` are also supported, so you can just paste 
 `commondir` - in bulked files mode, this is the common directory for all input files
 `starttime` - time when operation started in unix epoch milliseconds
 
-Platform folder paths:
-`tmp`, `home`, `downloads`, `documents`, `pictures`, `music`, `videos`, `desktop`
+Platform folder paths: `tmp`, `home`, `downloads`, `documents`, `pictures`, `music`, `videos`, `desktop`
 
 ### File/Directory variables
 
