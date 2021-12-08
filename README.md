@@ -45,7 +45,7 @@ binary-name
   --param "${filename.toUpperCase()}"
 ```
 
-`stdout` is a reference to the stdout output of the last command. Other stdouts are available on the `stdouts[]` array. In the example above, we are using regular expression to extract path from an stdout line such as `[path] /path/to/file` to use in the next command.
+`stdout` is a reference to the stdout output of the previous command. Other stdouts are available on the `stdouts[]` array. In the example above, we are using regular expression to extract path from an stdout line such as `[path] /path/to/file` to use in the current command.
 
 ---
 
@@ -57,7 +57,9 @@ These items will then be available inside templates on the `inputs[]` array, whi
 
 ```
 ffmpeg
-	-i "concat:${inputs.map(f => f.path).join('|')}"
+	-i "concat:${inputs.map(f => f.basename).join('|')}"
 	-codec copy
 	"${inputs[0].filename}-concat.${inputs[0].ext}"
 ```
+
+Example above requires command **CWD** to be set to `${commondir}`.
