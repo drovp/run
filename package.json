@@ -20,7 +20,7 @@
 	},
 	"files": [
 		"dist",
-		"instructions.md"
+		"*.md"
 	],
 	"scripts": {
 		"build": "tsc",
