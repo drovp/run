@@ -50,7 +50,7 @@ const optionsSchema: OptionsSchema<Options> = [
 		type: 'boolean',
 		default: false,
 		title: `Parallel mode`,
-		description: `Run all commands at the same time.<br>In parallel mode, command templates don't have access to <code>stdouts[]</code> variable.`,
+		description: `Run all commands at the same time.<br>In parallel mode, command templates don't have access to the <code>stdouts[]</code> variable.`,
 	},
 	{
 		name: 'commands',
@@ -115,6 +115,7 @@ const optionsSchema: OptionsSchema<Options> = [
 		],
 		default: [],
 	},
+	{type: 'divider', title: 'Advanced'},
 	{
 		name: 'outputMode',
 		type: 'select',
@@ -194,6 +195,7 @@ export default (plugin: Plugin) => {
 		bulk: (items, options) => options.bulk,
 		threadType: ({options: {threadType, customThreadType}}) =>
 			threadType === 'custom' ? customThreadType : threadType,
+		threadTypeDescription: `Determined by Thread type profile option.`,
 		parallelize: true,
 		options: optionsSchema,
 	});
