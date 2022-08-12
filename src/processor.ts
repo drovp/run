@@ -22,7 +22,7 @@ export default async function (payload: Payload, {stage, output}: ProcessorUtils
 
 		// Utilities
 		Path,
-		time: dayjs,
+		Time: dayjs,
 		uid,
 	};
 	const {commands, outputs, outputMode} = options;
