@@ -30,7 +30,7 @@ You can use new lines and indentation to visually separate parameters, they'll b
 ```
 binary-name "${path}"
   --param ${uid(5)}
-  --param2 ${time(starttime).format(YYYY)}
+  --param2 ${Time(starttime).format(YYYY)}
 ```
 
 New line terminal escapes `\` and `^` are also supported, so you can just paste in already existing commands.
